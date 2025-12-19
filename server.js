@@ -28,6 +28,10 @@ io.on("connection", (socket) => {
   });
 });
 
+app.get("/", (req, res) => {
+  res.send("ECC Backend is running 🚀");
+});
+
 server.listen(process.env.PORT, () =>
   console.log("ECC Backend Running 🚀")
 );
