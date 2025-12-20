@@ -11,11 +11,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-/* 🔴 AUTH ROUTE — MUST EXIST */
+/* 🔴 AUTH ROUTE */
 app.use("/auth", require("./routes/auth"));
 
 /* 🟢 TEAM ROUTES (Stage 2) */
 app.use("/teams", require("./routes/team"));
+
+/* 🟣 ADMIN PLAYER SELECTION ROUTES (Stage 3) */
+app.use("/admin/players", require("./routes/adminPlayers"));
 
 /* Existing routes */
 app.use("/admin", require("./routes/admin"));
