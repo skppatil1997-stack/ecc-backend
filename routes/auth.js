@@ -13,17 +13,17 @@ router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ msg: "Email and password required" });
-    }
+    console.log("LOGIN ATTEMPT:", email);
 
     const user = await User.findOne({ email });
     if (!user) {
+      console.log("USER NOT FOUND");
       return res.status(400).json({ msg: "Invalid email or password" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      console.log("PASSWORD MISMATCH");
       return res.status(400).json({ msg: "Invalid email or password" });
     }
 
@@ -33,16 +33,19 @@ router.post("/login", async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    return res.json({
+    console.log("LOGIN SUCCESS:", user.role);
+
+    res.json({
       token,
       role: user.role,
       name: user.name
     });
   } catch (err) {
     console.error("LOGIN ERROR:", err);
-    return res.status(500).json({ msg: "Server error" });
+    res.status(500).json({ msg: "Server error" });
   }
 });
+
 
 /**
  * =========================
