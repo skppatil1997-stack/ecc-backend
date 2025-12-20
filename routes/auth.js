@@ -1,3 +1,54 @@
+const express = require("express");
+const router = express.Router();
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
+
+/**
+ * =========================
+ * LOGIN (Admin & Player)
+ * =========================
+ */
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ msg: "Email and password required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ msg: "Invalid email or password" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ msg: "Invalid email or password" });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    return res.json({
+      token,
+      role: user.role,
+      name: user.name
+    });
+  } catch (err) {
+    console.error("LOGIN ERROR:", err);
+    return res.status(500).json({ msg: "Server error" });
+  }
+});
+
+/**
+ * =========================
+ * SIGNUP (Admin & Player)
+ * =========================
+ */
 router.post("/signup", async (req, res) => {
   try {
     const { name, email, password, isAdmin, adminKey } = req.body;
@@ -6,7 +57,6 @@ router.post("/signup", async (req, res) => {
       return res.status(400).json({ msg: "All fields are required" });
     }
 
-    // Check if user already exists
     const existing = await User.findOne({ email });
     if (existing) {
       return res.status(400).json({ msg: "User already exists" });
@@ -14,14 +64,11 @@ router.post("/signup", async (req, res) => {
 
     let role = "PLAYER";
 
-    // ADMIN creation logic
     if (isAdmin) {
-      // 🔐 Secret key check
       if (adminKey !== process.env.ADMIN_SECRET_KEY) {
         return res.status(403).json({ msg: "Invalid admin secret key" });
       }
 
-      // Allow only ONE admin
       const adminExists = await User.findOne({ role: "ADMIN" });
       if (adminExists) {
         return res.status(403).json({ msg: "Admin already exists" });
@@ -45,3 +92,5 @@ router.post("/signup", async (req, res) => {
     return res.status(500).json({ msg: "Server error" });
   }
 });
+
+module.exports = router;
