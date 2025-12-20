@@ -1,10 +1,36 @@
 const mongoose = require("mongoose");
 
-const teamSchema = new mongoose.Schema({
-  name: String,
-  totalBudget: Number,
-  remainingBudget: Number,
-  players: [{ type: mongoose.Schema.Types.ObjectId, ref: "Player" }]
-});
+const TeamSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+      unique: true
+    },
 
-module.exports = mongoose.model("Team", teamSchema);
+    purse: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+
+    captain: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null
+    },
+
+    players: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
+      }
+    ]
+  },
+  {
+    timestamps: true
+  }
+);
+
+module.exports = mongoose.model("Team", TeamSchema);
