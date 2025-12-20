@@ -14,7 +14,10 @@ app.use(express.json());
 /* 🔴 AUTH ROUTE — MUST EXIST */
 app.use("/auth", require("./routes/auth"));
 
-/* Other routes */
+/* 🟢 TEAM ROUTES (Stage 2) */
+app.use("/teams", require("./routes/team"));
+
+/* Existing routes */
 app.use("/admin", require("./routes/admin"));
 app.use("/public", require("./routes/public"));
 
