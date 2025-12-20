@@ -15,6 +15,10 @@ router.post("/login", async (req, res) => {
 
     console.log("LOGIN ATTEMPT:", email);
 
+    if (!email || !password) {
+      return res.status(400).json({ msg: "Email and password are required" });
+    }
+
     const user = await User.findOne({ email });
     if (!user) {
       console.log("USER NOT FOUND");
@@ -36,20 +40,20 @@ router.post("/login", async (req, res) => {
     console.log("LOGIN SUCCESS:", user.role);
 
     res.json({
-  token,
-  user: {
-    id: user._id,
-    name: user.name,
-    email: user.email,
-    role: user.role.toLowerCase()
-  }
-});
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role, // already normalized
+        profilePhoto: user.profilePhoto || ""
+      }
+    });
   } catch (err) {
     console.error("LOGIN ERROR:", err);
-    res.status(500).json({ msg: "Server error" });
+    res.status(500).json({ msg: "Server error during login" });
   }
 });
-
 
 /**
  * =========================
@@ -64,24 +68,24 @@ router.post("/signup", async (req, res) => {
       return res.status(400).json({ msg: "All fields are required" });
     }
 
-    const existing = await User.findOne({ email });
-    if (existing) {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
       return res.status(400).json({ msg: "User already exists" });
     }
 
-    let role = "PLAYER";
+    let role = "player";
 
     if (isAdmin) {
       if (adminKey !== process.env.ADMIN_SECRET_KEY) {
         return res.status(403).json({ msg: "Invalid admin secret key" });
       }
 
-      const adminExists = await User.findOne({ role: "ADMIN" });
+      const adminExists = await User.findOne({ role: "admin" });
       if (adminExists) {
         return res.status(403).json({ msg: "Admin already exists" });
       }
 
-      role = "ADMIN";
+      role = "admin";
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -90,13 +94,19 @@ router.post("/signup", async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      role
+      role,
+      profilePhoto: "",
+      isAuctionEligible: false,
+      isCaptain: false
     });
 
-    return res.json({ msg: "Signup successful", role });
+    res.status(201).json({
+      msg: "Signup successful",
+      role
+    });
   } catch (err) {
     console.error("SIGNUP ERROR:", err);
-    return res.status(500).json({ msg: "Server error" });
+    res.status(500).json({ msg: "Server error during signup" });
   }
 });
 
