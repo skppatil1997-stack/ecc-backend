@@ -138,4 +138,44 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+/**
+ * =========================
+ * REMOVE CAPTAIN FROM TEAM
+ * =========================
+ * Admin only
+ */
+router.post("/remove-captain", async (req, res) => {
+  try {
+    const { teamId } = req.body;
+
+    if (!teamId) {
+      return res.status(400).json({ msg: "Team ID is required" });
+    }
+
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ msg: "Team not found" });
+    }
+
+    if (!team.captain) {
+      return res.status(400).json({ msg: "Team has no captain" });
+    }
+
+    // Reset captain flag on user
+    await User.findByIdAndUpdate(team.captain, {
+      isCaptain: false
+    });
+
+    // Remove captain from team
+    team.captain = null;
+    await team.save();
+
+    res.json({ msg: "Captain removed successfully" });
+  } catch (err) {
+    console.error("REMOVE CAPTAIN ERROR:", err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
+
 module.exports = router;
