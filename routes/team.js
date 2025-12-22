@@ -37,6 +37,7 @@ router.post("/create", async (req, res) => {
   }
 });
 
+
 /**
  * =========================
  * GET ALL TEAMS
@@ -173,6 +174,40 @@ router.post("/remove-captain", async (req, res) => {
     res.json({ msg: "Captain removed successfully" });
   } catch (err) {
     console.error("REMOVE CAPTAIN ERROR:", err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
+/**
+ * =========================
+ * UPDATE TEAM PURSE
+ * =========================
+ * Admin only
+ */
+router.put("/update-purse", async (req, res) => {
+  try {
+    const { teamId, purse } = req.body;
+
+    if (!teamId || purse === undefined) {
+      return res.status(400).json({
+        msg: "Team ID and new purse are required"
+      });
+    }
+
+    const team = await Team.findById(teamId);
+    if (!team) {
+      return res.status(404).json({ msg: "Team not found" });
+    }
+
+    team.purse = purse;
+    await team.save();
+
+    res.json({
+      msg: "Team purse updated successfully",
+      team
+    });
+  } catch (err) {
+    console.error("UPDATE PURSE ERROR:", err);
     res.status(500).json({ msg: "Server error" });
   }
 });
