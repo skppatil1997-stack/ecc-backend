@@ -7,7 +7,6 @@ const User = require("../models/User");
  * =========================
  * CREATE TEAM
  * =========================
- * Admin creates a team with purse
  */
 router.post("/create", async (req, res) => {
   try {
@@ -45,9 +44,7 @@ router.post("/create", async (req, res) => {
  */
 router.get("/", async (req, res) => {
   try {
-    const teams = await Team.find()
-      .populate("captain", "name email");
-
+    const teams = await Team.find().populate("captain", "name email");
     res.json(teams);
   } catch (err) {
     console.error("GET TEAMS ERROR:", err);
@@ -59,7 +56,6 @@ router.get("/", async (req, res) => {
  * =========================
  * ASSIGN CAPTAIN TO TEAM
  * =========================
- * Admin only
  */
 router.post("/assign-captain", async (req, res) => {
   try {
@@ -87,22 +83,16 @@ router.post("/assign-captain", async (req, res) => {
       });
     }
 
-    // Ensure user is not already captain
-    const existingCaptain = await Team.findOne({
-      captain: userId
-    });
-
+    const existingCaptain = await Team.findOne({ captain: userId });
     if (existingCaptain) {
       return res.status(400).json({
         msg: "Player is already captain of another team"
       });
     }
 
-    // Assign captain to team
     team.captain = userId;
     await team.save();
 
-    // Mark user as captain
     user.isCaptain = true;
     await user.save();
 
@@ -115,6 +105,35 @@ router.post("/assign-captain", async (req, res) => {
     });
   } catch (err) {
     console.error("ASSIGN CAPTAIN ERROR:", err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
+/**
+ * =========================
+ * DELETE TEAM
+ * =========================
+ * Admin only
+ */
+router.delete("/:id", async (req, res) => {
+  try {
+    const team = await Team.findById(req.params.id);
+    if (!team) {
+      return res.status(404).json({ msg: "Team not found" });
+    }
+
+    // If team had a captain, reset captain flag
+    if (team.captain) {
+      await User.findByIdAndUpdate(team.captain, {
+        isCaptain: false
+      });
+    }
+
+    await team.deleteOne();
+
+    res.json({ msg: "Team deleted successfully" });
+  } catch (err) {
+    console.error("DELETE TEAM ERROR:", err);
     res.status(500).json({ msg: "Server error" });
   }
 });
