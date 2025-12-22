@@ -34,4 +34,23 @@ router.post("/auction/start", auth("ADMIN"), async (req, res) => {
   res.json(auction);
 });
 
+/**
+ * =========================
+ * GET AUCTION PLAYER POOL
+ * =========================
+ * Returns all auction-eligible players
+ */
+router.get("/auction/players", async (req, res) => {
+  try {
+    const players = await User.find({
+      isAuctionEligible: true
+    }).select("name email isCaptain");
+
+    res.json(players);
+  } catch (err) {
+    console.error("GET AUCTION PLAYERS ERROR:", err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
 module.exports = router;
