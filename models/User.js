@@ -2,6 +2,9 @@ const mongoose = require("mongoose");
 
 const UserSchema = new mongoose.Schema(
   {
+    /* =========================
+       BASIC INFO
+       ========================= */
     name: {
       type: String,
       required: true,
@@ -23,15 +26,13 @@ const UserSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      enum: ["admin", "player"],
-      default: "player"
+      enum: ["ADMIN", "PLAYER"],
+      default: "PLAYER"
     },
 
-    profilePhoto: {
-      type: String,
-      default: "" // will store image URL later
-    },
-
+    /* =========================
+       AUCTION FLAGS
+       ========================= */
     isAuctionEligible: {
       type: Boolean,
       default: false
@@ -40,6 +41,33 @@ const UserSchema = new mongoose.Schema(
     isCaptain: {
       type: Boolean,
       default: false
+    },
+
+    /* =========================
+       PLAYER SOLD FLOW (NEW)
+       ========================= */
+    isSold: {
+      type: Boolean,
+      default: false
+    },
+
+    soldPrice: {
+      type: Number,
+      default: 0
+    },
+
+    team: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Team",
+      default: null
+    },
+
+    /* =========================
+       OPTIONAL (FUTURE READY)
+       ========================= */
+    profilePhoto: {
+      type: String,
+      default: ""
     }
   },
   {
