@@ -8,12 +8,17 @@ const auth = require("../middleware/auth");
  * =========================
  * SELL PLAYER (ADMIN ONLY)
  * =========================
+ * Finalizes auction for current player
  */
 router.post("/sell", auth, async (req, res) => {
   try {
-    // Admin check
+    /* =========================
+       ADMIN CHECK
+       ========================= */
     if (req.user.role !== "ADMIN") {
-      return res.status(403).json({ msg: "Admin access required" });
+      return res.status(403).json({
+        msg: "Admin access required"
+      });
     }
 
     const { playerId, teamId, price } = req.body;
@@ -29,7 +34,9 @@ router.post("/sell", auth, async (req, res) => {
        ========================= */
     const player = await User.findById(playerId);
     if (!player) {
-      return res.status(404).json({ msg: "Player not found" });
+      return res.status(404).json({
+        msg: "Player not found"
+      });
     }
 
     if (!player.isAuctionEligible) {
@@ -49,7 +56,9 @@ router.post("/sell", auth, async (req, res) => {
        ========================= */
     const team = await Team.findById(teamId);
     if (!team) {
-      return res.status(404).json({ msg: "Team not found" });
+      return res.status(404).json({
+        msg: "Team not found"
+      });
     }
 
     if (team.purse < price) {
@@ -62,7 +71,11 @@ router.post("/sell", auth, async (req, res) => {
        UPDATE TEAM
        ========================= */
     team.purse -= price;
-    team.players.push(player._id);
+
+    if (!team.players.includes(player._id)) {
+      team.players.push(player._id);
+    }
+
     await team.save();
 
     /* =========================
@@ -72,21 +85,38 @@ router.post("/sell", auth, async (req, res) => {
     player.soldPrice = price;
     player.team = team._id;
     player.isAuctionEligible = false;
-    player.isCaptain = false; // sold players cannot be captains
+    player.isCaptain = false;
 
     await player.save();
 
-    res.json({
-      msg: "Player sold successfully",
+    /* =========================
+       SOCKET EVENT
+       ========================= */
+    const io = req.app.get("io");
+
+    io.emit("auction:sold", {
       player: {
-        name: player.name,
-        soldPrice: price,
-        team: team.name
-      }
+        id: player._id,
+        name: player.name
+      },
+      team: {
+        id: team._id,
+        name: team.name
+      },
+      price
+    });
+
+    /* =========================
+       RESPONSE
+       ========================= */
+    res.json({
+      msg: "Player sold successfully"
     });
   } catch (err) {
     console.error("SELL PLAYER ERROR:", err);
-    res.status(500).json({ msg: "Server error" });
+    res.status(500).json({
+      msg: "Server error"
+    });
   }
 });
 
