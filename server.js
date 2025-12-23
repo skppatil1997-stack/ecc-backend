@@ -31,6 +31,7 @@ app.use("/auth", require("./routes/auth"));
 app.use("/admin", require("./routes/admin"));
 app.use("/public", require("./routes/public"));
 app.use("/teams", require("./routes/team"));
+app.use("/auction", require("./routes/auction"));
 
 /* =========================
    HEALTH CHECK
