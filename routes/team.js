@@ -73,35 +73,47 @@ router.post("/assign-captain", async (req, res) => {
       return res.status(404).json({ msg: "Team not found" });
     }
 
-    const user = await User.findById(userId);
-    if (!user) {
+    const newCaptain = await User.findById(userId);
+    if (!newCaptain) {
       return res.status(404).json({ msg: "User not found" });
     }
 
-    if (!user.isAuctionEligible) {
+    if (!newCaptain.isAuctionEligible) {
       return res.status(400).json({
-        msg: "User is not eligible for auction"
+        msg: "User is not auction eligible"
       });
     }
 
-    const existingCaptain = await Team.findOne({ captain: userId });
-    if (existingCaptain) {
-      return res.status(400).json({
-        msg: "Player is already captain of another team"
+    /* 🔥 FIX PART — REMOVE OLD CAPTAIN */
+    if (team.captain) {
+      await User.findByIdAndUpdate(team.captain, {
+        isCaptain: false
       });
     }
 
+    /* 🔥 ENSURE USER IS NOT CAPTAIN ELSEWHERE */
+    const alreadyCaptain = await Team.findOne({
+      captain: userId
+    });
+
+    if (alreadyCaptain) {
+      return res.status(400).json({
+        msg: "User is already captain of another team"
+      });
+    }
+
+    /* ASSIGN NEW CAPTAIN */
     team.captain = userId;
     await team.save();
 
-    user.isCaptain = true;
-    await user.save();
+    newCaptain.isCaptain = true;
+    await newCaptain.save();
 
     res.json({
-      msg: "Captain assigned successfully",
+      msg: "Captain updated successfully",
       team: {
         name: team.name,
-        captain: user.name
+        captain: newCaptain.name
       }
     });
   } catch (err) {
@@ -109,6 +121,7 @@ router.post("/assign-captain", async (req, res) => {
     res.status(500).json({ msg: "Server error" });
   }
 });
+
 
 /**
  * =========================
