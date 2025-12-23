@@ -1,47 +1,62 @@
-const router = require("express").Router();
-const { auth } = require("../middleware/auth");
-const Player = require("../models/Player");
-const Team = require("../models/Team");
-const Auction = require("../models/Auction");
+const express = require("express");
+const router = express.Router();
+const User = require("../models/User");
+const auth = require("../middleware/auth");
 
-router.post("/player", auth("ADMIN"), async (req, res) => {
-  res.json(await Player.create(req.body));
+/**
+ * =========================
+ * GET ALL USERS (ADMIN)
+ * =========================
+ */
+router.get("/players/users", auth, async (req, res) => {
+  try {
+    if (req.user.role !== "ADMIN") {
+      return res.status(403).json({ msg: "Admin access required" });
+    }
+
+    const users = await User.find().select("-password");
+    res.json(users);
+  } catch (err) {
+    console.error("GET USERS ERROR:", err);
+    res.status(500).json({ msg: "Server error" });
+  }
 });
 
-router.post("/team", auth("ADMIN"), async (req, res) => {
-  const team = await Team.create({
-    ...req.body,
-    remainingBudget: req.body.totalBudget
-  });
-  res.json(team);
-});
+/**
+ * =========================
+ * TOGGLE AUCTION ELIGIBILITY
+ * =========================
+ */
+router.put("/players/eligibility", auth, async (req, res) => {
+  try {
+    if (req.user.role !== "ADMIN") {
+      return res.status(403).json({ msg: "Admin access required" });
+    }
 
-router.post("/auction/start", auth("ADMIN"), async (req, res) => {
-  const unsold = await Player.find({ status: "UNSOLD" });
-  const random = unsold[Math.floor(Math.random() * unsold.length)];
+    const { userId, isAuctionEligible } = req.body;
 
-  const auction = await Auction.findOneAndUpdate(
-    {},
-    {
-      currentPlayer: random._id,
-      currentBid: random.basePrice,
-      status: "RUNNING",
-      increments: [100, 500, 1000, 5000]
-    },
-    { upsert: true, new: true }
-  );
+    await User.findByIdAndUpdate(userId, {
+      isAuctionEligible
+    });
 
-  res.json(auction);
+    res.json({ msg: "Eligibility updated" });
+  } catch (err) {
+    console.error("UPDATE ELIGIBILITY ERROR:", err);
+    res.status(500).json({ msg: "Server error" });
+  }
 });
 
 /**
  * =========================
  * GET AUCTION PLAYER POOL
  * =========================
- * Returns all auction-eligible players
  */
-router.get("/auction/players", async (req, res) => {
+router.get("/auction/players", auth, async (req, res) => {
   try {
+    if (req.user.role !== "ADMIN") {
+      return res.status(403).json({ msg: "Admin access required" });
+    }
+
     const players = await User.find({
       isAuctionEligible: true
     }).select("name email isCaptain");
