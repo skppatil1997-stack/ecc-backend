@@ -15,7 +15,7 @@ router.post("/sell", auth, async (req, res) => {
     /* =========================
        ADMIN CHECK
        ========================= */
-    if (req.user.role !== "ADMIN") {
+    if (req.user.role !== "admin") {
       return res.status(403).json({
         msg: "Admin access required"
       });
@@ -85,7 +85,7 @@ router.post("/sell", auth, async (req, res) => {
     player.soldPrice = price;
     player.team = team._id;
     player.isAuctionEligible = false;
-    player.isCaptain = false;
+    //player.isCaptain = false;
 
     await player.save();
 
