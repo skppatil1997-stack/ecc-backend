@@ -11,7 +11,13 @@ module.exports = function (req, res, next) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // { id, role }
+
+    // 🔥 NORMALIZE ROLE ONCE
+    req.user = {
+      ...decoded,
+      role: decoded.role?.toUpperCase()
+    };
+
     next();
   } catch (err) {
     return res.status(401).json({ msg: "Token is not valid" });

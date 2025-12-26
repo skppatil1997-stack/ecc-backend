@@ -10,7 +10,7 @@ const auth = require("../middleware/auth");
  */
 router.get("/players/users", auth, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
+    if (req.user.role !== "ADMIN") {
       return res.status(403).json({ msg: "Admin access required" });
     }
 
@@ -29,7 +29,7 @@ router.get("/players/users", auth, async (req, res) => {
  */
 router.put("/players/eligibility", auth, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
+    if (req.user.role !== "ADMIN") {
       return res.status(403).json({ msg: "Admin access required" });
     }
 
@@ -53,7 +53,7 @@ router.put("/players/eligibility", auth, async (req, res) => {
  */
 router.get("/auction/players", auth, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
+    if (req.user.role !== "ADMIN") {
       return res.status(403).json({ msg: "Admin access required" });
     }
 
