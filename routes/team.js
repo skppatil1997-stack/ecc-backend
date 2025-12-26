@@ -107,7 +107,9 @@ router.post("/assign-captain", async (req, res) => {
     await team.save();
 
     newCaptain.isCaptain = true;
+    newCaptain.isAuctionEligible = false;
     await newCaptain.save();
+
 
     res.json({
       msg: "Captain updated successfully",

@@ -50,6 +50,7 @@ router.put("/players/eligibility", auth, async (req, res) => {
  * =========================
  * GET AUCTION PLAYER POOL
  * =========================
+ * 🔥 EXCLUDES CAPTAINS
  */
 router.get("/auction/players", auth, async (req, res) => {
   try {
@@ -58,8 +59,10 @@ router.get("/auction/players", auth, async (req, res) => {
     }
 
     const players = await User.find({
-      isAuctionEligible: true
-    }).select("name email isCaptain");
+      isAuctionEligible: true,
+      isCaptain: false,
+      soldToTeam: { $exists: false }
+    }).select("name email");
 
     res.json(players);
   } catch (err) {
