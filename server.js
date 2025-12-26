@@ -13,17 +13,22 @@ const server = http.createServer(app);
 app.use(cors());
 app.use(express.json());
 
-/* ROUTES */
+/* =========================
+   ROUTES
+   ========================= */
 app.use("/auth", require("./routes/auth"));
 app.use("/admin", require("./routes/admin"));
 app.use("/teams", require("./routes/team"));
 
+/* =========================
+   HEALTH CHECK
+   ========================= */
 app.get("/", (req, res) => {
-  res.send("ECC Backend running 🚀");
+  res.send("ECC Backend + Socket.IO running 🚀");
 });
 
 /* =========================
-   SOCKET.IO – WORKING BASELINE
+   SOCKET.IO SETUP
    ========================= */
 const io = new Server(server, {
   cors: {
@@ -32,56 +37,79 @@ const io = new Server(server, {
   }
 });
 
-/* IN-MEMORY AUCTION STATE */
+/* =========================
+   AUCTION STATE (LOCKED)
+   ========================= */
 let auctionState = {
   isLive: false,
+  basePrice: 0,
   currentPlayer: null,
   currentBid: 0,
   highestBidder: null
 };
 
+/* =========================
+   SOCKET EVENTS
+   ========================= */
 io.on("connection", (socket) => {
   console.log("🔌 Socket connected:", socket.id);
 
   socket.emit("auction:update", auctionState);
 
-  socket.on("auction:start", () => {
-    console.log("🚀 Auction started");
+  /* ADMIN: START AUCTION */
+  socket.on("auction:start", ({ basePrice }) => {
+    console.log("🚀 Auction started with base price:", basePrice);
+
     auctionState.isLive = true;
-    auctionState.currentBid = 0;
+    auctionState.basePrice = basePrice;
+    auctionState.currentBid = basePrice;
     auctionState.highestBidder = null;
+
     io.emit("auction:update", auctionState);
   });
 
-  socket.on("auction:set-player", (player) => {
-    console.log("🎯 Player set:", player.name);
+  /* ADMIN: NEXT PLAYER */
+  socket.on("auction:next-player", ({ player }) => {
+    if (!auctionState.isLive) return;
+
+    console.log("🎯 New player:", player.name);
+
     auctionState.currentPlayer = player;
-    auctionState.currentBid = 0;
+    auctionState.currentBid = auctionState.basePrice;
     auctionState.highestBidder = null;
+
     io.emit("auction:update", auctionState);
   });
 
-  socket.on("auction:bid", ({ bidder, amount }) => {
-    console.log("💰 BID:", bidder, amount);
-
+  /* CAPTAIN: BID */
+  socket.on("auction:bid", ({ bidder, increment }) => {
     if (!auctionState.isLive) return;
     if (!auctionState.currentPlayer) return;
-    if (amount <= auctionState.currentBid) return;
 
-    auctionState.currentBid = amount;
+    const newBid = auctionState.currentBid + increment;
+
+    console.log(
+      `💰 BID: ${bidder.name} bid ₹${newBid}`
+    );
+
+    auctionState.currentBid = newBid;
     auctionState.highestBidder = bidder;
 
     io.emit("auction:update", auctionState);
   });
 
+  /* ADMIN: STOP AUCTION */
   socket.on("auction:stop", () => {
     console.log("🛑 Auction stopped");
+
     auctionState = {
       isLive: false,
+      basePrice: 0,
       currentPlayer: null,
       currentBid: 0,
       highestBidder: null
     };
+
     io.emit("auction:update", auctionState);
   });
 
