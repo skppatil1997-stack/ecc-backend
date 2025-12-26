@@ -5,15 +5,11 @@ const http = require("http");
 const { Server } = require("socket.io");
 
 const connectDB = require("./config/db");
-
 connectDB();
 
 const app = express();
 const server = http.createServer(app);
 
-/* =========================
-   SOCKET.IO SETUP
-   ========================= */
 const io = new Server(server, {
   cors: {
     origin: "*",
@@ -24,97 +20,69 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
-/* =========================
-   ROUTES
-   ========================= */
 app.use("/auth", require("./routes/auth"));
 app.use("/admin", require("./routes/admin"));
-app.use("/public", require("./routes/public"));
 app.use("/teams", require("./routes/team"));
 app.use("/auction", require("./routes/auction"));
 
-/* =========================
-   HEALTH CHECK
-   ========================= */
 app.get("/", (req, res) => {
   res.send("ECC Backend + Socket.IO running 🚀");
 });
 
 /* =========================
-   AUCTION STATE (IN-MEMORY)
+   AUCTION STATE
    ========================= */
 let auctionState = {
   isLive: false,
   currentPlayer: null,
   currentBid: 0,
   highestBidder: null,
-  increment: 100,
   usedPlayers: []
 };
 
 /* =========================
-   SOCKET.IO EVENTS
+   SOCKET.IO
    ========================= */
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
+  console.log("🔌 Socket connected:", socket.id);
 
-  /* Send current auction state */
   socket.emit("auction:update", auctionState);
 
-  /**
-   * =========================
-   * ADMIN STARTS AUCTION
-   * =========================
-   */
   socket.on("auction:start", ({ basePrice }) => {
+    console.log("▶️ Auction started");
     auctionState.isLive = true;
     auctionState.currentBid = basePrice || 0;
     auctionState.highestBidder = null;
-
     io.emit("auction:update", auctionState);
   });
 
-  /**
-   * =========================
-   * ADMIN LOADS NEXT PLAYER
-   * =========================
-   */
   socket.on("auction:next-player", ({ players }) => {
+    console.log("⏭ Next player requested");
+
     if (!auctionState.isLive) return;
     if (!players || players.length === 0) return;
 
-    const availablePlayers = players.filter(
+    const remaining = players.filter(
       (p) => !auctionState.usedPlayers.includes(p._id)
     );
 
-    if (availablePlayers.length === 0) {
-      io.emit("auction:end", {
-        msg: "No players left in auction pool"
-      });
-      return;
-    }
+    if (!remaining.length) return;
 
-    const randomPlayer =
-      availablePlayers[Math.floor(Math.random() * availablePlayers.length)];
-
-    auctionState.currentPlayer = randomPlayer;
+    const player = remaining[Math.floor(Math.random() * remaining.length)];
+    auctionState.currentPlayer = player;
     auctionState.currentBid = 0;
     auctionState.highestBidder = null;
-    auctionState.usedPlayers.push(randomPlayer._id);
+    auctionState.usedPlayers.push(player._id);
 
     io.emit("auction:update", auctionState);
   });
 
-  /**
-   * =========================
-   * BID EVENT (ADMIN + CAPTAINS)
-   * =========================
-   */
   socket.on("auction:bid", ({ bidder, amount }) => {
+    console.log("💰 BID RECEIVED:", bidder, amount);
+
     if (!auctionState.isLive) return;
     if (!auctionState.currentPlayer) return;
-    if (!bidder || !amount) return;
-    if (amount <= auctionState.currentBid) return;
+    if (!amount || amount <= auctionState.currentBid) return;
 
     auctionState.currentBid = amount;
     auctionState.highestBidder = bidder;
@@ -122,34 +90,21 @@ io.on("connection", (socket) => {
     io.emit("auction:update", auctionState);
   });
 
-  /**
-   * =========================
-   * ADMIN STOPS AUCTION
-   * =========================
-   */
   socket.on("auction:stop", () => {
+    console.log("⛔ Auction stopped");
     auctionState = {
       isLive: false,
       currentPlayer: null,
       currentBid: 0,
       highestBidder: null,
-      increment: 100,
       usedPlayers: []
     };
-
     io.emit("auction:update", auctionState);
   });
 
   socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
+    console.log("❌ Socket disconnected:", socket.id);
   });
-});
-
-/* =========================
-   FALLBACK (KEEP LAST)
-   ========================= */
-app.use((req, res) => {
-  res.status(404).json({ msg: "Path not found!" });
 });
 
 const PORT = process.env.PORT || 5000;
