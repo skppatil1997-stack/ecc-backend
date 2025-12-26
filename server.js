@@ -13,53 +13,37 @@ const server = http.createServer(app);
 app.use(cors());
 app.use(express.json());
 
-/* =========================
-   ROUTES
-   ========================= */
+/* ================= ROUTES ================= */
 app.use("/auth", require("./routes/auth"));
 app.use("/admin", require("./routes/admin"));
 app.use("/teams", require("./routes/team"));
 
-/* =========================
-   HEALTH CHECK
-   ========================= */
+/* ================= HEALTH ================= */
 app.get("/", (req, res) => {
   res.send("ECC Backend + Socket.IO running 🚀");
 });
 
-/* =========================
-   SOCKET.IO SETUP
-   ========================= */
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
-
-/* =========================
-   AUCTION STATE (LOCKED)
-   ========================= */
+/* ================= AUCTION STATE ================= */
 let auctionState = {
   isLive: false,
-  basePrice: 0,
   currentPlayer: null,
+  basePrice: 0,
   currentBid: 0,
   highestBidder: null
 };
 
-/* =========================
-   SOCKET EVENTS
-   ========================= */
+/* ================= SOCKET ================= */
+const io = new Server(server, {
+  cors: { origin: "*" }
+});
+
 io.on("connection", (socket) => {
-  console.log("🔌 Socket connected:", socket.id);
+  console.log("🔌 Connected:", socket.id);
 
   socket.emit("auction:update", auctionState);
 
-  /* ADMIN: START AUCTION */
+  /* ADMIN START AUCTION */
   socket.on("auction:start", ({ basePrice }) => {
-    console.log("🚀 Auction started with base price:", basePrice);
-
     auctionState.isLive = true;
     auctionState.basePrice = basePrice;
     auctionState.currentBid = basePrice;
@@ -68,12 +52,8 @@ io.on("connection", (socket) => {
     io.emit("auction:update", auctionState);
   });
 
-  /* ADMIN: NEXT PLAYER */
+  /* ADMIN LOAD NEXT PLAYER */
   socket.on("auction:next-player", ({ player }) => {
-    if (!auctionState.isLive) return;
-
-    console.log("🎯 New player:", player.name);
-
     auctionState.currentPlayer = player;
     auctionState.currentBid = auctionState.basePrice;
     auctionState.highestBidder = null;
@@ -81,31 +61,23 @@ io.on("connection", (socket) => {
     io.emit("auction:update", auctionState);
   });
 
-  /* CAPTAIN: BID */
-  socket.on("auction:bid", ({ bidder, increment }) => {
+  /* CAPTAIN BID */
+  socket.on("auction:bid", ({ bidderName, increment }) => {
     if (!auctionState.isLive) return;
     if (!auctionState.currentPlayer) return;
 
-    const newBid = auctionState.currentBid + increment;
-
-    console.log(
-      `💰 BID: ${bidder.name} bid ₹${newBid}`
-    );
-
-    auctionState.currentBid = newBid;
-    auctionState.highestBidder = bidder;
+    auctionState.currentBid += increment;
+    auctionState.highestBidder = bidderName;
 
     io.emit("auction:update", auctionState);
   });
 
-  /* ADMIN: STOP AUCTION */
+  /* ADMIN STOP */
   socket.on("auction:stop", () => {
-    console.log("🛑 Auction stopped");
-
     auctionState = {
       isLive: false,
-      basePrice: 0,
       currentPlayer: null,
+      basePrice: 0,
       currentBid: 0,
       highestBidder: null
     };
@@ -114,11 +86,11 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log("❌ Socket disconnected:", socket.id);
+    console.log("❌ Disconnected:", socket.id);
   });
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log("ECC Backend + Socket.IO running 🚀");
-});
+server.listen(PORT, () =>
+  console.log("ECC Backend + Socket.IO running 🚀")
+);
