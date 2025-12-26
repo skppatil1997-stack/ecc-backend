@@ -20,7 +20,6 @@ const io = new Server(server, {
     methods: ["GET", "POST"]
   }
 });
-app.set("io", io);
 
 app.use(cors());
 app.use(express.json());
@@ -59,11 +58,13 @@ let auctionState = {
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  // Send current auction state to newly connected user
+  /* Send current auction state */
   socket.emit("auction:update", auctionState);
 
   /**
+   * =========================
    * ADMIN STARTS AUCTION
+   * =========================
    */
   socket.on("auction:start", ({ basePrice }) => {
     auctionState.isLive = true;
@@ -74,14 +75,14 @@ io.on("connection", (socket) => {
   });
 
   /**
-   * ADMIN REQUESTS NEXT RANDOM PLAYER
-   * players = array of auction-eligible players
+   * =========================
+   * ADMIN LOADS NEXT PLAYER
+   * =========================
    */
   socket.on("auction:next-player", ({ players }) => {
     if (!auctionState.isLive) return;
     if (!players || players.length === 0) return;
 
-    // Filter out already used players
     const availablePlayers = players.filter(
       (p) => !auctionState.usedPlayers.includes(p._id)
     );
@@ -93,7 +94,6 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // Pick random player
     const randomPlayer =
       availablePlayers[Math.floor(Math.random() * availablePlayers.length)];
 
@@ -106,11 +106,14 @@ io.on("connection", (socket) => {
   });
 
   /**
+   * =========================
    * BID EVENT (ADMIN + CAPTAINS)
+   * =========================
    */
   socket.on("auction:bid", ({ bidder, amount }) => {
     if (!auctionState.isLive) return;
     if (!auctionState.currentPlayer) return;
+    if (!bidder || !amount) return;
     if (amount <= auctionState.currentBid) return;
 
     auctionState.currentBid = amount;
@@ -120,7 +123,9 @@ io.on("connection", (socket) => {
   });
 
   /**
+   * =========================
    * ADMIN STOPS AUCTION
+   * =========================
    */
   socket.on("auction:stop", () => {
     auctionState = {
